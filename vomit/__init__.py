@@ -1,16 +1,48 @@
 import ast
+import re
 import unicodedata
+from os import path, walk
 from random import choice
+from typing import Iterator
+
+__version__ = "1.0.0"
 
 
-def to_utf8(code: str) -> str:
-    visitor = _Visitor(fw=False)
+def to_utf8(code: str, ignore_node_names: list[str] | None = None) -> str:
+    visitor = _Visitor(False, ignore_node_names)
     return _action(code, visitor)
 
 
-def to_unicode(code: str) -> str:
-    visitor = _Visitor()
+def to_unicode(code: str, ignore_node_names: list[str] | None = None) -> str:
+    visitor = _Visitor(True, ignore_node_names)
     return _action(code, visitor)
+
+
+def walker(
+    source: str,
+    extensions: list[str] | None = None,
+    ignore: list[str] | None = None,
+    ignore_regex: list[str] | None = None,
+) -> Iterator[str]:
+    _extensions = {f'.{ext.strip().lstrip(".")}' for ext in extensions} if extensions else set()
+    _extensions.add(".py")
+
+    _ignore_regex = {re.compile(i) for i in ignore_regex} if ignore_regex else None
+
+    for root, _, files in walk(source):
+        if ignore and any(root.endswith(i) for i in ignore):
+            continue
+        if _ignore_regex and any(re.match(i, root) for i in _ignore_regex):
+            continue
+
+        for name in files:
+            if any(name.endswith(e) for e in _extensions):
+                file = path.join(root, name)
+                if ignore and any(file == i for i in ignore):
+                    continue
+                if _ignore_regex and any(re.match(i, file) for i in _ignore_regex):
+                    continue
+                yield file
 
 
 def _action(code: str, visitor: ast.NodeVisitor) -> str:
@@ -20,20 +52,22 @@ def _action(code: str, visitor: ast.NodeVisitor) -> str:
 
 
 class _Visitor(ast.NodeVisitor):
-    def __init__(self, fw=True) -> None:
+    def __init__(self, fw=True, ignore_node_names: list[str] | None = None) -> None:
         super().__init__()
         self._action = _Visitor._fw_action if fw else _Visitor._bw_action
+        self._ignore_node_names = ignore_node_names
 
     @staticmethod
     def _fw_action(v: str) -> str:
-        return ''.join([_put(i) for i in v])
+        return "".join([_put(i) for i in v])
 
     @staticmethod
     def _bw_action(v: str) -> str:
-        return unicodedata.normalize('NFKC', v)
+        return unicodedata.normalize("NFKC", v)
 
     def visit_Name(self, node):
-        node.id = self._action(node.id)
+        if not self._ignore_node_names or not any(node.id == i for i in self._ignore_node_names):
+            node.id = self._action(node.id)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
@@ -79,7 +113,7 @@ UNICODE_MAP: dict[str, str] = {
     "n": "nⁿₙｎ𝐧𝑛𝒏𝓃𝓷𝔫𝕟𝖓𝗇𝗻𝘯𝙣𝚗",
     "o": "oºᵒₒℴｏ𝐨𝑜𝒐𝓸𝔬𝕠𝖔𝗈𝗼𝘰𝙤𝚘",
     "p": "pᵖₚｐ𝐩𝑝𝒑𝓅𝓹𝔭𝕡𝖕𝗉𝗽𝘱𝙥𝚙",
-    "q": "qｑ𐞥𝐪𝑞𝒒𝓆𝓺𝔮𝕢𝖖𝗊𝗾𝘲𝙦𝚚",
+    "q": "qｑ𝐪𝑞𝒒𝓆𝓺𝔮𝕢𝖖𝗊𝗾𝘲𝙦𝚚",
     "r": "rʳᵣｒ𝐫𝑟𝒓𝓇𝓻𝔯𝕣𝖗𝗋𝗿𝘳𝙧𝚛",
     "s": "sſˢₛｓ𝐬𝑠𝒔𝓈𝓼𝔰𝕤𝖘𝗌𝘀𝘴𝙨𝚜",
     "t": "tᵗₜｔ𝐭𝑡𝒕𝓉𝓽𝔱𝕥𝖙𝗍𝘁𝘵𝙩𝚝",
@@ -91,10 +125,10 @@ UNICODE_MAP: dict[str, str] = {
     "z": "zᶻｚ𝐳𝑧𝒛𝓏𝔃𝔷𝕫𝖟𝗓𝘇𝘻𝙯𝚣",
     "A": "AᴬＡ𝐀𝐴𝑨𝒜𝓐𝔄𝔸𝕬𝖠𝗔𝘈𝘼𝙰",
     "B": "BᴮℬＢ𝐁𝐵𝑩𝓑𝔅𝔹𝕭𝖡𝗕𝘉𝘽𝙱",
-    "C": "CℂℭⅭꟲＣ𝐂𝐶𝑪𝒞𝓒𝕮𝖢𝗖𝘊𝘾𝙲",
+    "C": "CℂℭⅭＣ𝐂𝐶𝑪𝒞𝓒𝕮𝖢𝗖𝘊𝘾𝙲",
     "D": "DᴰⅅⅮＤ𝐃𝐷𝑫𝒟𝓓𝔇𝔻𝕯𝖣𝗗𝘋𝘿𝙳",
     "E": "EᴱℰＥ𝐄𝐸𝑬𝓔𝔈𝔼𝕰𝖤𝗘𝘌𝙀𝙴",
-    "F": "FℱꟳＦ𝐅𝐹𝑭𝓕𝔉𝔽𝕱𝖥𝗙𝘍𝙁𝙵",
+    "F": "FℱＦ𝐅𝐹𝑭𝓕𝔉𝔽𝕱𝖥𝗙𝘍𝙁𝙵",
     "G": "GᴳＧ𝐆𝐺𝑮𝒢𝓖𝔊𝔾𝕲𝖦𝗚𝘎𝙂𝙶",
     "H": "HᴴℋℌℍＨ𝐇𝐻𝑯𝓗𝕳𝖧𝗛𝘏𝙃𝙷",
     "I": "IᴵℐℑⅠＩ𝐈𝐼𝑰𝓘𝕀𝕴𝖨𝗜𝘐𝙄𝙸",
@@ -105,7 +139,7 @@ UNICODE_MAP: dict[str, str] = {
     "N": "NᴺℕＮ𝐍𝑁𝑵𝒩𝓝𝔑𝕹𝖭𝗡𝘕𝙉𝙽",
     "O": "OᴼＯ𝐎𝑂𝑶𝒪𝓞𝔒𝕆𝕺𝖮𝗢𝘖𝙊𝙾",
     "P": "PᴾℙＰ𝐏𝑃𝑷𝒫𝓟𝔓𝕻𝖯𝗣𝘗𝙋𝙿",
-    "Q": "QℚꟴＱ𝐐𝑄𝑸𝒬𝓠𝔔𝕼𝖰𝗤𝘘𝙌𝚀",
+    "Q": "QℚＱ𝐐𝑄𝑸𝒬𝓠𝔔𝕼𝖰𝗤𝘘𝙌𝚀",
     "R": "RᴿℛℜℝＲ𝐑𝑅𝑹𝓡𝕽𝖱𝗥𝘙𝙍𝚁",
     "S": "SＳ𝐒𝑆𝑺𝒮𝓢𝔖𝕊𝕾𝖲𝗦𝘚𝙎𝚂",
     "T": "TᵀＴ𝐓𝑇𝑻𝒯𝓣𝔗𝕋𝕿𝖳𝗧𝘛𝙏𝚃",
@@ -114,5 +148,5 @@ UNICODE_MAP: dict[str, str] = {
     "W": "WᵂＷ𝐖𝑊𝑾𝒲𝓦𝔚𝕎𝖂𝖶𝗪𝘞𝙒𝚆",
     "X": "XⅩＸ𝐗𝑋𝑿𝒳𝓧𝔛𝕏𝖃𝖷𝗫𝘟𝙓𝚇",
     "Y": "YＹ𝐘𝑌𝒀𝒴𝓨𝔜𝕐𝖄𝖸𝗬𝘠𝙔𝚈",
-    "Z": "ZℤℨＺ𝐙𝑍𝒁𝒵𝓩𝖅𝖹𝗭𝘡𝙕𝚉"
+    "Z": "ZℤℨＺ𝐙𝑍𝒁𝒵𝓩𝖅𝖹𝗭𝘡𝙕𝚉",
 }

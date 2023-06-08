@@ -1,6 +1,6 @@
-import pytest
-
 import string
+
+import pytest
 
 from vomit import to_unicode, to_utf8
 
@@ -43,6 +43,15 @@ class NameClass:
 
 '''
 
+_change_name = "fn"
+_ignore_name = "__version__"
+_ignore_names_fmt = f'''
+{_ignore_name} = '1.2.3'
+
+def {_change_name}():
+    ...
+'''
+
 
 @pytest.mark.parametrize('n', range(20))
 def test_function_after_change_is_ok(n):
@@ -76,3 +85,9 @@ def test_function_after_roundtrip_is_ok():
     assert str_obtained == _sval
     assert num_obtained == 42
     assert bool_obtained
+
+
+def test_names_are_ignored():
+    unicode = to_unicode(_ignore_names_fmt, [_ignore_name])
+    assert _ignore_name in unicode
+    assert _change_name not in unicode

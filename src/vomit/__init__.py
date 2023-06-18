@@ -1,6 +1,8 @@
 import ast
 import unicodedata
 from random import choice
+from os import walk, path
+from typing import Iterator
 
 
 def to_utf8(code: str) -> str:
@@ -11,6 +13,13 @@ def to_utf8(code: str) -> str:
 def to_unicode(code: str) -> str:
     visitor = _Visitor()
     return _action(code, visitor)
+
+
+def walker(source: str) -> Iterator[str]:
+    for root, _, files in walk(source):
+        for name in files:
+            if name.endswith('.py'):
+                yield path.join(root, name)
 
 
 def _action(code: str, visitor: ast.NodeVisitor) -> str:

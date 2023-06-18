@@ -20,7 +20,7 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _output(code: str, dest: str):
+def _output(code: str, dest: str | None):
     if not dest:
         print(code)
         return
@@ -29,7 +29,7 @@ def _output(code: str, dest: str):
         f.write(code)
 
 
-def _input(action: Callable[[str], str], src: str) -> str:
+def _input(action: Callable[[str], str], src: str | None) -> str:
     if not src:
         code = ''.join(line for line in sys.stdin)
         return action(code)
@@ -39,7 +39,7 @@ def _input(action: Callable[[str], str], src: str) -> str:
         return action(code)
 
 
-def _pipe(action: Callable[[str], str], source: str):
+def _pipe(action: Callable[[str], str], source: str | None):
     code = _input(action, source)
     _output(code, source)
 

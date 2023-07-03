@@ -15,11 +15,23 @@ def to_unicode(code: str) -> str:
     return _action(code, visitor)
 
 
-def walker(source: str) -> Iterator[str]:
+def walker(source: str, ignore: str | None = None, extensions: str | None = None) -> Iterator[str]:
+    _extensions = {f'.{ext.strip().lstrip(".")}' for ext in extensions.split(',')} if extensions else set()
+    _extensions = _extensions | {'.py'}
+
+    _ignore = {i.strip() for i in ignore.split(',')} if ignore else set()
+
     for root, _, files in walk(source):
+        if _ignore and any(root.endswith(i) for i in _ignore):
+            continue
+
         for name in files:
-            if name.endswith('.py'):
-                yield path.join(root, name)
+            if any(name.endswith(e) for e in _extensions):
+                file = path.join(root, name)
+                if _ignore and any(file == i for i in _ignore):
+                    continue
+
+                yield file
 
 
 def _action(code: str, visitor: ast.NodeVisitor) -> str:

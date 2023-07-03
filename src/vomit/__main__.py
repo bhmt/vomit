@@ -17,6 +17,16 @@ def _parser() -> argparse.ArgumentParser:
     input_group.add_argument('-f', '--file', type=str, help='the file to encode or decode, defaults to stdin')
     input_group.add_argument('-s', '--source', type=str, help='the directory to encode or decode .py files recursively')
 
+    parser.add_argument(
+        '-i', '--ignore', type=str,
+        help='comma separated values of files and directories to skip when using --source'
+    )
+
+    parser.add_argument(
+        '-t', '--ext', type=str,
+        help='comma separated values of extensions to include along ".py" when using --source'
+    )
+
     return parser
 
 
@@ -44,27 +54,29 @@ def _pipe(action: Callable[[str], str], source: str | None):
     _output(code, source)
 
 
+def _validate_input(source: str, msg: str, check: Callable[[str], bool]):
+    if not os.path.exists(source):
+        print(f'{msg} "{source}" not found')
+        os._exit(1)
+
+    if not check(source):
+        print(f'"{source}" not a {msg}')
+        os._exit(1)
+
+
 if __name__ == '__main__':
     args = _parser().parse_args()
     action = to_unicode if args.encode else to_utf8
 
-    if args.source or args.file:
-        source = args.source or args.file
-        msg = 'directory' if args.source else 'file'
-        check = os.path.isdir if args.source else os.path.isfile
+    if args.source:
+        _validate_input(args.source, 'directory', os.path.isdir)
+        for file in walker(args.source, args.ignore, args.ext):
+            _pipe(action, file)
+        os._exit(0)
 
-        if not os.path.exists(source):
-            print(f'{msg} "{source}" not found')
-            os._exit(1)
+    if args.file:
+        _validate_input(args.file, 'file', os.path.isfile)
+        _pipe(action, args.file)
+        os._exit(0)
 
-        if not check(source):
-            print(f'"{source}" not a {msg}')
-            os._exit(1)
-
-        if args.file:
-            _pipe(action, source)
-        else:
-            for file in walker(source):
-                _pipe(action, file)
-    else:
-        _pipe(action, None)
+    _pipe(action, None)

@@ -24,13 +24,13 @@ pip install py-vomit
 
 ## Usage
 
-As a module run vomit with either encode or decode required option.
+As a module run vomit with a required option to either encode or decode.
 For input use a a stdin + stdout, a file, or a directory.
 
 
 ```shell
 
-usage: python -m vomit [-h] (-e | -d) [-f FILE | -s SOURCE]
+usage: python -m vomit [-h] (-e | -d) [-f FILE | -s SOURCE] [-i IGNORE] [-t EXT]
 
 options:
   -h, --help            show this help message and exit
@@ -39,6 +39,9 @@ options:
   -f FILE, --file FILE  the file to encode or decode, defaults to stdin
   -s SOURCE, --source SOURCE
                         the directory to encode or decode .py files recursively
+  -i IGNORE, --ignore IGNORE
+                        comma separated values of files and directories to skip when using --source
+  -t EXT, --ext EXT     comma separated values of extensions to include along ".py" when using --source
 
 ```
 

@@ -1,36 +1,49 @@
 import ast
 import unicodedata
+from os import path, walk
+import re
 from random import choice
-from os import walk, path
 from typing import Iterator
 
 
-def to_utf8(code: str) -> str:
-    visitor = _Visitor(fw=False)
+__version__ = "0.4.0"
+
+
+def to_utf8(code: str, ignore_node_names: list[str] | None = None) -> str:
+    visitor = _Visitor(False, ignore_node_names)
     return _action(code, visitor)
 
 
-def to_unicode(code: str) -> str:
-    visitor = _Visitor()
+def to_unicode(code: str, ignore_node_names: list[str] | None = None) -> str:
+    visitor = _Visitor(True, ignore_node_names)
     return _action(code, visitor)
 
 
-def walker(source: str, ignore: str | None = None, extensions: str | None = None) -> Iterator[str]:
-    _extensions = {f'.{ext.strip().lstrip(".")}' for ext in extensions.split(',')} if extensions else set()
-    _extensions = _extensions | {'.py'}
+def walker(
+        source: str,
+        extensions: list[str] | None = None,
+        ignore: list[str] | None = None,
+        ignore_regex: list[str] | None = None
+    ) -> Iterator[str]:
 
-    _ignore = {i.strip() for i in ignore.split(',')} if ignore else set()
+    _extensions = {f'.{ext.strip().lstrip(".")}' for ext in extensions} if extensions else set()
+    _extensions.add('.py')
+
+    _ignore_regex = {re.compile(i) for i in ignore_regex} if ignore_regex else None
 
     for root, _, files in walk(source):
-        if _ignore and any(root.endswith(i) for i in _ignore):
+        if ignore and any(root.endswith(i) for i in ignore):
+            continue
+        if _ignore_regex and any(re.match(i, root) for i in _ignore_regex):
             continue
 
         for name in files:
             if any(name.endswith(e) for e in _extensions):
                 file = path.join(root, name)
-                if _ignore and any(file == i for i in _ignore):
+                if ignore and any(file == i for i in ignore):
                     continue
-
+                if _ignore_regex and any(re.match(i, file) for i in _ignore_regex):
+                    continue
                 yield file
 
 
@@ -41,9 +54,10 @@ def _action(code: str, visitor: ast.NodeVisitor) -> str:
 
 
 class _Visitor(ast.NodeVisitor):
-    def __init__(self, fw=True) -> None:
+    def __init__(self, fw=True, ignore_node_names: list[str] | None = None) -> None:
         super().__init__()
         self._action = _Visitor._fw_action if fw else _Visitor._bw_action
+        self._ignore_node_names = ignore_node_names
 
     @staticmethod
     def _fw_action(v: str) -> str:
@@ -54,7 +68,8 @@ class _Visitor(ast.NodeVisitor):
         return unicodedata.normalize('NFKC', v)
 
     def visit_Name(self, node):
-        node.id = self._action(node.id)
+        if not self._ignore_node_names or not any(node.id == i for i in self._ignore_node_names):
+            node.id = self._action(node.id)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):

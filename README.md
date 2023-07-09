@@ -13,7 +13,7 @@ The changes are inplace if using a file or a directory for input.
 
 ## Installation
 
-the package is available on pypi and can be installed using pip.
+The package is available on pypi and can be installed using pip.
 Activate a virtual environment and run
 
 ```
@@ -26,11 +26,13 @@ pip install py-vomit
 
 As a module run vomit with a required option to either encode or decode.
 For input use a a stdin + stdout, a file, or a directory.
+Add more extensions if `.py` is not enough.
+Ignore node names, files, or directories if it keeps the code functional.
 
 
 ```shell
 
-usage: python -m vomit [-h] (-e | -d) [-f FILE | -s SOURCE] [-i IGNORE] [-t EXT]
+usage: python -m vomit [-h] (-e | -d) [-f FILE] [-s SOURCE] [-i [IGNORE ...]] [-r [IGNORE_REGEX ...]] [-n [IGNORE_NAMES ...]] [-t [EXT ...]] [-v]
 
 options:
   -h, --help            show this help message and exit
@@ -38,10 +40,16 @@ options:
   -d, --decode          indicate the file should be decoded
   -f FILE, --file FILE  the file to encode or decode, defaults to stdin
   -s SOURCE, --source SOURCE
-                        the directory to encode or decode .py files recursively
-  -i IGNORE, --ignore IGNORE
-                        comma separated values of files and directories to skip when using --source
-  -t EXT, --ext EXT     comma separated values of extensions to include along ".py" when using --source
+                        the directory to encode or decode files recursively
+  -i [IGNORE ...], --ignore [IGNORE ...]
+                        list of files and directories to skip when using source as input
+  -r [IGNORE_REGEX ...], --ignore-regex [IGNORE_REGEX ...]
+                        list of files and directories as regex patterns to skip when using source as input
+  -n [IGNORE_NAMES ...], --ignore-names [IGNORE_NAMES ...]
+                        list of node names to skip
+  -t [EXT ...], --ext [EXT ...]
+                        list of extensions to include along ".py" when using source as input
+  -v, --verbose         verbose output used for file or source as input
 
 ```
 
@@ -54,11 +62,11 @@ from vomit import to_unicode
 from vomit import to_utf8
 from vomit import UNICODE_MAP
 
-print(to_utf8('a'))
-# 'a'
-print(to_unicode('a'))
-# '𝔞'
-print(UNICODE_MAP['0'])
-# 0０𝟎𝟘𝟢𝟬𝟶🯰
+print(to_utf8('🯳'))
+# '3'
+print(to_unicode('1'))
+# '𝟙'
+print(UNICODE_MAP['2'])
+# 2２𝟐𝟚𝟤𝟮𝟸🯲
 
 ```

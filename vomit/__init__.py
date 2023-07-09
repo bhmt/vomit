@@ -6,7 +6,7 @@ from random import choice
 from typing import Iterator
 
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 def to_utf8(code: str, ignore_node_names: list[str] | None = None) -> str:
